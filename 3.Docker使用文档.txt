@@ -1,0 +1,101 @@
+1.导入tar镜像文件：
+	sudo dockerd -s overlay2
+	nvidia-docker load --input ./chipeak-ub18.04-cuda10.1-detectron2-zwh-2020-06-16.tar
+
+2.导出镜像为tar文件
+	nvidia-docker save -o  xxx.tar  [镜像id或name]
+
+3.导出容器为镜像：
+	nvidia-docker commit [选项] [容器ID或容器名]  [仓库名:标签]
+	nvidia-docker commit -a 'weikaixxxxxx' -m '导入了数据库' 9adeb5943045  mysql:v2
+	# -a:修改人
+	# -m:备注
+
+4.创建网桥：
+	(1)查看网桥：
+		docker network ls
+	(2)创建网桥：
+		docker network create -d macvlan --subnet=192.168.1.0/24 --gateway=192.168.1.1 -o parent=eno4  bredge-zwh
+		# -d macvlan 表示创建虚拟网卡，也可以换成 bridge
+		# --subnet=192.168.1.0/24  大概默认网段
+		# --gateway=192.168.1.1  大概路由网址
+		# parent=eno4 复制的网卡 
+		# bredge-zwh 网桥名字-可以任意取名
+	
+5.运行一个容器
+	(1)查看被占用ip
+		nbtscan 192.168.1.1-254
+	(2)创建容器
+		# (init)
+		nvidia-docker run  -dit --restart=always  --privileged  --net=bredge-zwh    -v /tmp/.X11-unix:/tmp/.X11-unix   -v /work:/my_work   --ip=192.168.1.100  -p 10086:22   -e DISPLAY=:0       -e LANG=C.UTF-8  --shm-size 16G  --name  chipeak-ub18.04-cuda10.1-caffe-zwh  c9ea4ea7d631 /bin/bash
+		# (创建笔记本自己开发使用的docker)
+		nvidia-docker run --runtime=nvidia --gpus all   -dit --restart=always  --privileged   -v /tmp/.X11-unix:/tmp/.X11-unix   -v /work:/work      -p 10086:22    -e DISPLAY=:0    -e LANG=C.UTF-8  --shm-size 8G   --name  ub18.04-cuda10.1-init-zwh   -w /   e54ebc73d89a /bin/bash
+		
+		nvidia-docker run  									# 
+		-dit    										 	# 后台运行容器
+		--restart=always                                    # docker重启时,自动重启
+		--net=bredge-zwh  									# 网桥名称
+		-p 10086:22                                         # 端口映射
+		-v   /work:/my_work                                 # 目录映射
+		-v /tmp/.X11-unix:/tmp/.X11-unix    			    # 图形界面信息窗体sockt
+		--privileged  										# container内的root拥有真正的root权限
+		-e DISPLAY=:0  									    # 图形界面端口
+		-e LANG=C.UTF-8  									# 支持中文环境
+		--shm-size 16G 										# 共享内存
+		--name  chipeak-ub18.04-cuda10.1-caffe-zwh  		# 容器名称
+		9e47e9dfcb9a 									    # 进行id
+		/bin/bash                                           # 启动终端
+		QT_X11_NO_MITSHM=1  
+		-w /home/jello                                      # 指定工作目录
+		
+		#  --restart=always  docker重启时,自动重启
+		# -e LANG=C.UTF-8   支持中文环境
+		# -p 本机端口——>容器端口映射
+		# -v 挂在宿主文件，到容器。
+		# -name 容器名称
+		# -c 接下来的表示一个字符串
+
+6.进入容器
+	docker exec -it  41a79b39f0b7  -e  /bin/bash
+
+==============================================================================================================================================================
+
+docker界面显示
+	echo $DISPLAY
+	sudo apt-get install lightdm
+	sudo service lightdm start
+	xhost +$HOSTNAME  
+	export DISPLAY=:0.0  
+
+
+镜像重名
+	docker tag IMAGEID  REPOSITORY:TAG
+
+
+列出所有镜像：
+	docker images
+
+容器停止
+	docker stop  容器id
+
+容器启动
+	docker start  容器id
+
+
+
+列出所有的容器 ID
+	docker ps -aq
+
+停止所有的容器
+	docker stop $(docker ps -aq)
+
+删除所有的容器
+	docker rm $(docker ps -aq)
+
+删除所有的镜像
+	docker rmi $(docker images -q)
+
+查看镜像信息：
+	docker inspect docker.io/ub18.04-cuda10.1-init-zwh:PVNet-env-complete
+
+
